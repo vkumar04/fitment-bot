@@ -28,11 +28,12 @@ interface FloatingChatbotProps {
 }
 
 export default function FloatingChatbot({
-  shopDomain: propShopDomain,
+  shopDomain: propShopDomain = "unknown",
 }: FloatingChatbotProps = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [sessionId] = useState(getSessionId);
-  const shopDomain = propShopDomain || getShopDomain();
+  // Always prefer the prop value which comes from the URL parameter set by the embed script
+  const shopDomain = propShopDomain;
 
   const { messages, sendMessage: originalSendMessage, status } = useChat();
 
