@@ -317,7 +317,7 @@ export default function Dashboard() {
                   ></div>
                   <div>
                     <div className="text-gray-300 font-medium">
-                      {conv.shop_domain}
+                      Session {conv.session_id.slice(0, 8)}...
                     </div>
                     <div className="text-gray-500 text-sm">
                       {new Date(conv.started_at).toLocaleString()} •{" "}
