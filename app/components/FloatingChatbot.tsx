@@ -5,6 +5,70 @@ import { useState, useEffect, useRef } from "react";
 import imageCompression from "browser-image-compression";
 import Image from "next/image";
 
+// Analytics helper functions that call the API
+async function startSession(
+  sessionId: string,
+  source: string,
+  sourceDomain?: string,
+) {
+  console.log("[Chatbot] Starting session:", {
+    sessionId,
+    source,
+    sourceDomain,
+  });
+  try {
+    const response = await fetch("/api/analytics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "start_session",
+        sessionId,
+        data: { source, sourceDomain },
+      }),
+    });
+    const result = await response.json();
+    console.log("[Chatbot] Session started:", result);
+  } catch (error) {
+    console.error("[Chatbot] Failed to start session:", error);
+  }
+}
+
+async function endSession(sessionId: string, sentiment?: number) {
+  try {
+    await fetch("/api/analytics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "end_session",
+        sessionId,
+        data: { sentiment },
+      }),
+    });
+  } catch (error) {
+    console.error("Failed to end session:", error);
+  }
+}
+
+async function trackMessage(
+  sessionId: string,
+  role: string,
+  contentLength: number,
+) {
+  try {
+    await fetch("/api/analytics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "track_message",
+        sessionId,
+        data: { role, contentLength },
+      }),
+    });
+  } catch (error) {
+    console.error("Failed to track message:", error);
+  }
+}
+
 export default function FloatingChatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const { messages, sendMessage, status } = useChat();
@@ -12,6 +76,9 @@ export default function FloatingChatbot() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [sessionId] = useState(
+    () => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+  );
 
   // Render text with HTML anchor tags as clickable links
   const renderTextWithLinks = (text: string) => {
@@ -54,6 +121,45 @@ export default function FloatingChatbot() {
     return parts.length > 0 ? parts : text;
   };
 
+  // Initialize analytics on mount
+  useEffect(() => {
+    // Detect if we're in an iframe (Shopify embed)
+    const isEmbedded =
+      typeof window !== "undefined" && window.parent !== window;
+    let source = "standalone";
+    let sourceDomain: string | undefined;
+
+    if (isEmbedded) {
+      source = "shopify";
+      // Try to get parent domain (will be blocked by CORS, but we can try)
+      try {
+        sourceDomain = document.referrer
+          ? new URL(document.referrer).hostname
+          : undefined;
+      } catch (e) {
+        // CORS blocked, that's okay
+        sourceDomain = "shopify-store";
+      }
+    }
+
+    console.log("[Chatbot] Component mounted, starting session");
+    startSession(sessionId, source, sourceDomain);
+  }, [sessionId]);
+
+  // Track when chat opens/closes
+  useEffect(() => {
+    console.log("[Chatbot] Chat isOpen:", isOpen);
+  }, [isOpen]);
+
+  // End session on unmount
+  useEffect(() => {
+    return () => {
+      if (messages.length > 0) {
+        endSession(sessionId);
+      }
+    };
+  }, [sessionId, messages.length]);
+
   // Communicate with parent window when embedded in iframe
   useEffect(() => {
     if (typeof window !== "undefined" && window.parent !== window) {
@@ -67,10 +173,24 @@ export default function FloatingChatbot() {
     }
   }, [isOpen]);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive and track messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+
+    // Track new messages
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      const contentLength = lastMessage.parts
+        .filter((p) => p.type === "text")
+        .reduce((sum, p) => sum + (p.text?.length || 0), 0);
+
+      trackMessage(
+        sessionId,
+        lastMessage.role as "user" | "assistant",
+        contentLength,
+      );
+    }
+  }, [messages, sessionId]);
 
   // Compress image before upload
   async function compressImage(file: File): Promise<File> {
