@@ -9,10 +9,10 @@
   container.id = "kansei-chatbot-container";
   document.body.appendChild(container);
 
-  // Get the shop domain from current page
+  // Capture shop domain from the parent page
   const shopDomain = window.location.hostname;
 
-  // Load the chatbot iframe with shop domain
+  // Load the chatbot iframe
   const iframe = document.createElement("iframe");
   iframe.src =
     CHATBOT_API_URL + "/chatbot-embed?shop=" + encodeURIComponent(shopDomain);
@@ -25,6 +25,7 @@
     border: none;
     z-index: 999999;
     background: transparent;
+    pointer-events: none;
     transition: width 0.3s, height 0.3s;
   `;
   iframe.setAttribute("id", "kansei-chatbot-iframe");
@@ -40,13 +41,15 @@
 
     if (event.data && event.data.type === "chatbot") {
       if (event.data.isOpen) {
-        // Chat is open - make iframe large
-        iframe.style.width = "100%";
-        iframe.style.height = "100%";
+        // Chat is open - expand to fit chat window (approx 450px width, 700px height)
+        iframe.style.width = "450px";
+        iframe.style.height = "700px";
+        iframe.style.pointerEvents = "auto";
       } else {
-        // Chat is closed - make iframe small
+        // Chat is closed - shrink to just the button size
         iframe.style.width = "100px";
         iframe.style.height = "100px";
+        iframe.style.pointerEvents = "auto";
       }
     }
   });
