@@ -5,9 +5,64 @@ import { useState, useEffect, useRef } from "react";
 import imageCompression from "browser-image-compression";
 import Image from "next/image";
 
-export default function FloatingChatbot() {
+// Generate or retrieve session ID
+function getSessionId(): string {
+  if (typeof window === "undefined") return "";
+
+  let sessionId = sessionStorage.getItem("chatbot_session_id");
+  if (!sessionId) {
+    sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    sessionStorage.setItem("chatbot_session_id", sessionId);
+  }
+  return sessionId;
+}
+
+// Get shop domain from URL
+function getShopDomain(): string {
+  if (typeof window === "undefined") return "unknown";
+  return window.location.hostname;
+}
+
+interface FloatingChatbotProps {
+  shopDomain?: string;
+}
+
+export default function FloatingChatbot({
+  shopDomain: propShopDomain,
+}: FloatingChatbotProps = {}) {
   const [isOpen, setIsOpen] = useState(false);
-  const { messages, sendMessage, status } = useChat();
+  const [sessionId] = useState(getSessionId);
+  const shopDomain = propShopDomain || getShopDomain();
+
+  const { messages, sendMessage: originalSendMessage, status } = useChat();
+
+  // Wrap sendMessage to track analytics
+  const sendMessage = async (message: any) => {
+    const content =
+      message.parts
+        ?.filter((p: any) => p.type === "text")
+        .map((p: any) => p.text)
+        .join(" ") || "";
+    const hasImages =
+      message.parts?.some((p: any) => p.type === "file") || false;
+
+    // Track user message
+    fetch("/api/analytics/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId,
+        shopDomain,
+        role: "user",
+        content,
+        hasImages,
+      }),
+    }).catch((err) => console.error("Track error:", err));
+
+    // Send the message
+    return originalSendMessage(message);
+  };
+
   const [input, setInput] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -71,6 +126,44 @@ export default function FloatingChatbot() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Track assistant responses (only when complete)
+  const lastTrackedMessageRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+
+    // Only track if it's an assistant message, status is not streaming, and we haven't tracked this message yet
+    if (
+      lastMessage &&
+      lastMessage.role === "assistant" &&
+      status !== "streaming" &&
+      lastTrackedMessageRef.current !== lastMessage.id
+    ) {
+      const content =
+        lastMessage.parts
+          ?.filter((p: any) => p.type === "text")
+          .map((p: any) => p.text)
+          .join(" ") || "";
+
+      // Only track if content is not empty
+      if (content.trim()) {
+        lastTrackedMessageRef.current = lastMessage.id;
+
+        fetch("/api/analytics/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId,
+            shopDomain,
+            role: "assistant",
+            content,
+            hasImages: false,
+          }),
+        }).catch((err) => console.error("Track error:", err));
+      }
+    }
+  }, [messages, status, sessionId, shopDomain]);
 
   // Compress image before upload
   async function compressImage(file: File): Promise<File> {
