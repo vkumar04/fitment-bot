@@ -268,7 +268,7 @@ export default function Dashboard() {
 
         {displayMetrics?.recentConversations &&
         displayMetrics.recentConversations.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
             {displayMetrics.recentConversations.map((conv, index) => (
               <div
                 key={conv.id}
