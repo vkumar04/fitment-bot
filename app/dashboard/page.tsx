@@ -262,43 +262,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Shopify Store Breakdown */}
-      <div className="bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-xl p-6 mb-8">
-        <div className="flex items-center gap-2 mb-6">
-          <svg
-            className="w-5 h-5 text-green-400"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" />
-          </svg>
-          <h2 className="text-xl font-bold">Shopify Store Breakdown</h2>
-        </div>
-        <p className="text-gray-400 text-sm mb-4">Sessions by store domain</p>
-
-        {displayMetrics?.shopBreakdown &&
-        displayMetrics.shopBreakdown.length > 0 ? (
-          <div className="space-y-3">
-            {displayMetrics.shopBreakdown.map((shop, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between py-3 border-b border-gray-800 last:border-0"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                  <span className="text-gray-300">{shop.shop_domain}</span>
-                </div>
-                <span className="text-gray-400 font-medium">
-                  {shop.session_count} sessions
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 text-gray-500">No sessions yet</div>
-        )}
-      </div>
-
       {/* Recent Conversations */}
       <div className="bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-xl p-6">
         <h2 className="text-xl font-bold mb-6">Recent Conversations</h2>
@@ -306,7 +269,7 @@ export default function Dashboard() {
         {displayMetrics?.recentConversations &&
         displayMetrics.recentConversations.length > 0 ? (
           <div className="space-y-4">
-            {displayMetrics.recentConversations.map((conv) => (
+            {displayMetrics.recentConversations.map((conv, index) => (
               <div
                 key={conv.id}
                 className="flex items-center justify-between py-4 border-b border-gray-800 last:border-0"
@@ -317,7 +280,8 @@ export default function Dashboard() {
                   ></div>
                   <div>
                     <div className="text-gray-300 font-medium">
-                      Session {conv.session_id.slice(0, 8)}...
+                      Conversation #
+                      {displayMetrics.recentConversations.length - index}
                     </div>
                     <div className="text-gray-500 text-sm">
                       {new Date(conv.started_at).toLocaleString()} •{" "}
