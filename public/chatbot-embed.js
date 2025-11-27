@@ -9,13 +9,9 @@
   container.id = "kansei-chatbot-container";
   document.body.appendChild(container);
 
-  // Get the shop domain from current page
-  const shopDomain = window.location.hostname;
-
-  // Load the chatbot iframe with shop domain
+  // Load the chatbot iframe
   const iframe = document.createElement("iframe");
-  iframe.src =
-    CHATBOT_API_URL + "/chatbot-embed?shop=" + encodeURIComponent(shopDomain);
+  iframe.src = CHATBOT_API_URL + "/chatbot-embed";
   iframe.style.cssText = `
     position: fixed;
     bottom: 0;
