@@ -100,10 +100,23 @@ export default function Dashboard() {
 
   const displayMetrics = optimisticMetrics || metrics;
 
-  const todayChange = displayMetrics?.totalConversations
+  // Calculate percentage changes
+  const totalChange = displayMetrics?.totalConversations
     ? (
         (displayMetrics.todayConversations /
-          displayMetrics.totalConversations) *
+          Math.max(
+            displayMetrics.totalConversations -
+              displayMetrics.todayConversations,
+            1,
+          )) *
+        100
+      ).toFixed(1)
+    : "0.0";
+
+  const todayChange = displayMetrics?.todayConversations
+    ? (
+        (displayMetrics.activeConversations /
+          Math.max(displayMetrics.todayConversations, 1)) *
         100
       ).toFixed(1)
     : "0.0";
@@ -170,7 +183,12 @@ export default function Dashboard() {
             <div className="text-4xl font-bold">
               {displayMetrics?.totalConversations || 0}
             </div>
-            <div className="text-green-400 text-sm">+0.0%</div>
+            <div
+              className={`text-sm ${parseFloat(totalChange) >= 0 ? "text-green-400" : "text-red-400"}`}
+            >
+              {parseFloat(totalChange) >= 0 ? "+" : ""}
+              {totalChange}%
+            </div>
           </div>
         </div>
 
@@ -196,7 +214,12 @@ export default function Dashboard() {
             <div className="text-4xl font-bold">
               {displayMetrics?.todayConversations || 0}
             </div>
-            <div className="text-green-400 text-sm">+0.0%</div>
+            <div
+              className={`text-sm ${parseFloat(todayChange) >= 0 ? "text-green-400" : "text-red-400"}`}
+            >
+              {parseFloat(todayChange) >= 0 ? "+" : ""}
+              {todayChange}%
+            </div>
           </div>
         </div>
 
