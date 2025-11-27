@@ -58,9 +58,11 @@ export default function FloatingChatbot() {
   useEffect(() => {
     if (typeof window !== "undefined" && window.parent !== window) {
       if (isOpen) {
-        window.parent.postMessage("enablePointerEvents", "*");
+        // Chat is open - iframe needs to be large
+        window.parent.postMessage({ type: "chatbot", isOpen: true }, "*");
       } else {
-        window.parent.postMessage("disablePointerEvents", "*");
+        // Chat is closed - iframe can be small (just the button)
+        window.parent.postMessage({ type: "chatbot", isOpen: false }, "*");
       }
     }
   }, [isOpen]);
