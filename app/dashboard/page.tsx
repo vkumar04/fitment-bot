@@ -1,6 +1,6 @@
 import { getAnalytics } from "@/app/actions/analytics";
 import Image from "next/image";
-
+import ClearDatabaseButton from "./ClearDatabaseButton";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
@@ -22,34 +22,20 @@ export default async function DashboardPage() {
     recentSessions,
   } = result.data;
 
-  // Calculate Shopify vs Standalone stats
-  const shopifyStats = sourceBreakdown
-    .filter((s) => s.source === "shopify")
-    .reduce(
-      (acc, s) => ({
-        count: acc.count + s.count,
-        avgMessages: acc.avgMessages + s.avg_messages,
-      }),
-      { count: 0, avgMessages: 0 },
-    );
-
-  const standaloneStats = sourceBreakdown
-    .filter((s) => s.source === "standalone")
-    .reduce(
-      (acc, s) => ({
-        count: acc.count + s.count,
-        avgMessages: acc.avgMessages + s.avg_messages,
-      }),
-      { count: 0, avgMessages: 0 },
-    );
-
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Header */}
       <div className="border-b border-gray-800 bg-gray-950">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-3">
-          <Image src="/kansei-logo.png" alt="Kansei" width={40} height={40} />
-          <h1 className="text-xl font-semibold text-gray-100">Dashboard</h1>
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/kansei-logo.png"
+              alt="Kansei"
+              width={120}
+              height={80}
+            />
+          </div>
+          <ClearDatabaseButton />
         </div>
       </div>
 
@@ -192,9 +178,8 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Source Breakdown */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Shopify Stats */}
+        {/* Shopify Stores Breakdown */}
+        <div className="mb-8">
           <div className="bg-gray-950 border border-gray-800 rounded-lg p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
@@ -208,91 +193,57 @@ export default async function DashboardPage() {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-100">
-                  Shopify Stores
+                  Shopify Store Breakdown
                 </h3>
                 <p className="text-sm text-gray-400">
-                  Embedded chatbot sessions
+                  Sessions by store domain
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-3xl font-bold text-gray-100">
-                  {shopifyStats.count}
-                </div>
-                <div className="text-xs text-gray-400 mt-1">Total Sessions</div>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-gray-100">
-                  {shopifyStats.avgMessages.toFixed(1)}
-                </div>
-                <div className="text-xs text-gray-400 mt-1">Avg Messages</div>
-              </div>
-            </div>
-            {/* Show individual stores */}
-            {sourceBreakdown.filter((s) => s.source === "shopify").length >
-              0 && (
-              <div className="mt-4 pt-4 border-t border-gray-800">
-                <div className="text-xs text-gray-500 mb-2">
-                  Store Breakdown:
-                </div>
-                <div className="space-y-2">
-                  {sourceBreakdown
-                    .filter((s) => s.source === "shopify")
-                    .map((store, idx) => (
-                      <div key={idx} className="flex justify-between text-sm">
-                        <span className="text-gray-400 truncate">
-                          {store.source_domain || "Unknown"}
-                        </span>
-                        <span className="text-gray-300 font-medium">
-                          {store.count} sessions
-                        </span>
+
+            {sourceBreakdown.length > 0 ? (
+              <div className="space-y-2">
+                {sourceBreakdown.map((store, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="text-gray-400">
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                          />
+                        </svg>
                       </div>
-                    ))}
-                </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-300">
+                          {store.source_domain || "Direct Access"}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {store.avg_messages.toFixed(1)} avg messages
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-lg font-semibold text-gray-100">
+                      {store.count}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 py-8">
+                No sessions yet
               </div>
             )}
-          </div>
-
-          {/* Standalone Stats */}
-          <div className="bg-gray-950 border border-gray-800 rounded-lg p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-blue-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-100">
-                  Standalone Site
-                </h3>
-                <p className="text-sm text-gray-400">Direct website sessions</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-3xl font-bold text-gray-100">
-                  {standaloneStats.count}
-                </div>
-                <div className="text-xs text-gray-400 mt-1">Total Sessions</div>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-gray-100">
-                  {standaloneStats.avgMessages.toFixed(1)}
-                </div>
-                <div className="text-xs text-gray-400 mt-1">Avg Messages</div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -341,11 +292,6 @@ export default async function DashboardPage() {
                         <div className="text-sm font-medium text-gray-300">
                           Session {session.id.slice(-8)}
                         </div>
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded ${session.source === "shopify" ? "bg-green-900/30 text-green-400" : "bg-blue-900/30 text-blue-400"}`}
-                        >
-                          {session.source}
-                        </span>
                       </div>
                       <div className="text-xs text-gray-500">
                         {formattedDate}, {formattedTime}
