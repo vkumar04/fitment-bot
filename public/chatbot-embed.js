@@ -1,17 +1,17 @@
-(function() {
-  'use strict';
+(function () {
+  "use strict";
 
   // Configuration
-  const CHATBOT_API_URL = 'https://your-app.vercel.app'; // Replace with your actual URL
+  const CHATBOT_API_URL = "https://fitment-bot.vercel.app"; // Replace with your actual URL
 
   // Create container for chatbot
-  const container = document.createElement('div');
-  container.id = 'kansei-chatbot-container';
+  const container = document.createElement("div");
+  container.id = "kansei-chatbot-container";
   document.body.appendChild(container);
 
   // Load the chatbot iframe
-  const iframe = document.createElement('iframe');
-  iframe.src = CHATBOT_API_URL + '/chatbot-embed';
+  const iframe = document.createElement("iframe");
+  iframe.src = CHATBOT_API_URL + "/chatbot-embed";
   iframe.style.cssText = `
     position: fixed;
     bottom: 0;
@@ -23,26 +23,26 @@
     background: transparent;
     transition: width 0.3s, height 0.3s;
   `;
-  iframe.setAttribute('id', 'kansei-chatbot-iframe');
+  iframe.setAttribute("id", "kansei-chatbot-iframe");
 
   container.appendChild(iframe);
 
   // Listen for messages from the chatbot
-  window.addEventListener('message', function(event) {
+  window.addEventListener("message", function (event) {
     // Security: verify origin matches your app
     if (event.origin !== CHATBOT_API_URL) {
       return;
     }
 
-    if (event.data && event.data.type === 'chatbot') {
+    if (event.data && event.data.type === "chatbot") {
       if (event.data.isOpen) {
         // Chat is open - make iframe large
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
+        iframe.style.width = "100%";
+        iframe.style.height = "100%";
       } else {
         // Chat is closed - make iframe small
-        iframe.style.width = '100px';
-        iframe.style.height = '100px';
+        iframe.style.width = "100px";
+        iframe.style.height = "100px";
       }
     }
   });
