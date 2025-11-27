@@ -14,11 +14,8 @@ export async function OPTIONS(req: Request) {
 }
 
 export async function POST(req: Request) {
-  console.log("[Analytics API] Request received");
-
   try {
     const body = await req.json();
-    console.log("[Analytics API] Body:", body);
     const { action, sessionId, data } = body;
 
     if (action === "start_session") {
@@ -29,12 +26,6 @@ export async function POST(req: Request) {
         VALUES (?, datetime('now'), 'active', ?, ?)
       `);
       stmt.run(sessionId, source || "standalone", sourceDomain || null);
-      console.log(
-        "[Analytics API] Session started:",
-        sessionId,
-        source,
-        sourceDomain,
-      );
 
       return NextResponse.json(
         { success: true },

@@ -11,13 +11,8 @@ async function startSession(
   source: string,
   sourceDomain?: string,
 ) {
-  console.log("[Chatbot] Starting session:", {
-    sessionId,
-    source,
-    sourceDomain,
-  });
   try {
-    const response = await fetch("/api/analytics", {
+    await fetch("/api/analytics", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -26,10 +21,8 @@ async function startSession(
         data: { source, sourceDomain },
       }),
     });
-    const result = await response.json();
-    console.log("[Chatbot] Session started:", result);
   } catch (error) {
-    console.error("[Chatbot] Failed to start session:", error);
+    console.error("Failed to start session:", error);
   }
 }
 
@@ -142,14 +135,8 @@ export default function FloatingChatbot() {
       }
     }
 
-    console.log("[Chatbot] Component mounted, starting session");
     startSession(sessionId, source, sourceDomain);
   }, [sessionId]);
-
-  // Track when chat opens/closes
-  useEffect(() => {
-    console.log("[Chatbot] Chat isOpen:", isOpen);
-  }, [isOpen]);
 
   // End session on unmount
   useEffect(() => {
@@ -203,12 +190,8 @@ export default function FloatingChatbot() {
 
     try {
       const compressedFile = await imageCompression(file, options);
-      console.log(
-        `Compressed ${file.name} from ${(file.size / 1024 / 1024).toFixed(2)}MB to ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`,
-      );
       return compressedFile;
     } catch (error) {
-      console.error("Error compressing image:", error);
       return file; // Return original if compression fails
     }
   }
