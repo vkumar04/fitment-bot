@@ -1,7 +1,35 @@
-import { NextResponse } from "next/server";
-import { supabase } from "@/app/lib/supabase";
+"use server";
 
-export async function GET() {
+import { supabase } from "@/app/lib/supabase";
+import { revalidatePath } from "next/cache";
+
+export async function clearDatabase() {
+  try {
+    // Delete all data from tables (Supabase doesn't support DELETE without WHERE, so we use a condition that matches all)
+    await supabase
+      .from("messages")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+    await supabase
+      .from("conversations")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+    await supabase
+      .from("daily_metrics")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+
+    // Revalidate the dashboard to refresh data
+    revalidatePath("/dashboard");
+
+    return { success: true, message: "Database cleared successfully" };
+  } catch (error) {
+    console.error("Error clearing database:", error);
+    return { success: false, error: "Failed to clear database" };
+  }
+}
+
+export async function getMetrics() {
   try {
     // Get total conversations
     const { count: totalConversations } = await supabase
@@ -35,25 +63,26 @@ export async function GET() {
         : 0.5;
 
     // Get shop breakdown
-    const { data: allConversations } = await supabase
+    const { data: shopBreakdown } = await supabase
       .from("conversations")
-      .select("shop_domain");
+      .select("shop_domain")
+      .then(({ data }) => {
+        if (!data) return { data: [] };
+        const grouped = data.reduce((acc: any, row) => {
+          acc[row.shop_domain] = (acc[row.shop_domain] || 0) + 1;
+          return acc;
+        }, {});
+        return {
+          data: Object.entries(grouped)
+            .map(([shop_domain, session_count]) => ({
+              shop_domain,
+              session_count: session_count as number,
+            }))
+            .sort((a: any, b: any) => b.session_count - a.session_count),
+        };
+      });
 
-    const shopBreakdown = allConversations
-      ? Object.entries(
-          allConversations.reduce((acc: any, row) => {
-            acc[row.shop_domain] = (acc[row.shop_domain] || 0) + 1;
-            return acc;
-          }, {}),
-        )
-          .map(([shop_domain, session_count]) => ({
-            shop_domain,
-            session_count,
-          }))
-          .sort((a: any, b: any) => b.session_count - a.session_count)
-      : [];
-
-    // Get recent conversations
+    // Get recent conversations with details
     const { data: recentConversations } = await supabase
       .from("conversations")
       .select(
@@ -62,22 +91,19 @@ export async function GET() {
       .order("started_at", { ascending: false })
       .limit(10);
 
-    return NextResponse.json({
+    return {
       totalConversations: totalConversations || 0,
       todayConversations: todayConversations || 0,
       activeConversations: activeConversations || 0,
       averageSentiment,
-      shopBreakdown,
+      shopBreakdown: shopBreakdown || [],
       recentConversations: (recentConversations || []).map((conv) => ({
         ...conv,
         is_active: conv.is_active ? 1 : 0,
       })),
-    });
+    };
   } catch (error) {
     console.error("Error fetching metrics:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch metrics" },
-      { status: 500 },
-    );
+    throw new Error("Failed to fetch metrics");
   }
 }

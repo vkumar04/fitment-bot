@@ -1,20 +1,38 @@
-import { NextResponse } from 'next/server';
-import db from '@/app/lib/db';
-import { randomUUID } from 'crypto';
+import { NextResponse } from "next/server";
+import { supabase } from "@/app/lib/supabase";
 
 // Simple sentiment analysis (can be improved with a proper library)
 function analyzeSentiment(text: string): number {
-  const positiveWords = ['great', 'good', 'awesome', 'excellent', 'perfect', 'thanks', 'thank you', 'amazing', 'love'];
-  const negativeWords = ['bad', 'terrible', 'awful', 'horrible', 'hate', 'worst', 'disappointed', 'poor'];
+  const positiveWords = [
+    "great",
+    "good",
+    "awesome",
+    "excellent",
+    "perfect",
+    "thanks",
+    "thank you",
+    "amazing",
+    "love",
+  ];
+  const negativeWords = [
+    "bad",
+    "terrible",
+    "awful",
+    "horrible",
+    "hate",
+    "worst",
+    "disappointed",
+    "poor",
+  ];
 
   const lowerText = text.toLowerCase();
   let score = 0.5; // neutral
 
-  positiveWords.forEach(word => {
+  positiveWords.forEach((word) => {
     if (lowerText.includes(word)) score += 0.05;
   });
 
-  negativeWords.forEach(word => {
+  negativeWords.forEach((word) => {
     if (lowerText.includes(word)) score -= 0.05;
   });
 
@@ -23,55 +41,104 @@ function analyzeSentiment(text: string): number {
 
 export async function POST(req: Request) {
   try {
-    const { sessionId, shopDomain, role, content, hasImages } = await req.json();
+    const { sessionId, shopDomain, role, content, hasImages } =
+      await req.json();
 
     if (!sessionId || !shopDomain || !role || !content) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 },
+      );
     }
 
     // Get or create conversation
-    let conversation = db.prepare(
-      'SELECT * FROM conversations WHERE session_id = ?'
-    ).get(sessionId) as any;
+    const { data: existingConversation } = await supabase
+      .from("conversations")
+      .select("*")
+      .eq("session_id", sessionId)
+      .single();
 
-    if (!conversation) {
-      const conversationId = randomUUID();
-      db.prepare(`
-        INSERT INTO conversations (id, session_id, shop_domain, started_at, is_active)
-        VALUES (?, ?, ?, datetime('now'), 1)
-      `).run(conversationId, sessionId, shopDomain);
+    let conversationId: string;
 
-      conversation = { id: conversationId, session_id: sessionId };
+    if (!existingConversation) {
+      const { data: newConversation, error } = await supabase
+        .from("conversations")
+        .insert({
+          session_id: sessionId,
+          shop_domain: shopDomain,
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (error || !newConversation) {
+        console.error("Error creating conversation:", error);
+        return NextResponse.json(
+          { error: "Failed to create conversation" },
+          { status: 500 },
+        );
+      }
+
+      conversationId = newConversation.id;
+    } else {
+      conversationId = existingConversation.id;
     }
 
     // Analyze sentiment
     const sentiment = analyzeSentiment(content);
 
     // Insert message
-    const messageId = randomUUID();
-    db.prepare(`
-      INSERT INTO messages (id, conversation_id, role, content, has_images, sentiment_score, timestamp)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-    `).run(messageId, conversation.id, role, content, hasImages ? 1 : 0, sentiment);
+    const { data: message, error: messageError } = await supabase
+      .from("messages")
+      .insert({
+        conversation_id: conversationId,
+        role,
+        content,
+        has_images: hasImages || false,
+        sentiment_score: sentiment,
+      })
+      .select()
+      .single();
 
-    // Update conversation
-    const messageCount = db.prepare(
-      'SELECT COUNT(*) as count FROM messages WHERE conversation_id = ?'
-    ).get(conversation.id) as { count: number };
+    if (messageError) {
+      console.error("Error creating message:", messageError);
+      return NextResponse.json(
+        { error: "Failed to create message" },
+        { status: 500 },
+      );
+    }
 
-    const avgSentiment = db.prepare(
-      'SELECT AVG(sentiment_score) as avg FROM messages WHERE conversation_id = ? AND sentiment_score IS NOT NULL'
-    ).get(conversation.id) as { avg: number };
+    // Update conversation stats
+    const { data: messages } = await supabase
+      .from("messages")
+      .select("sentiment_score")
+      .eq("conversation_id", conversationId);
 
-    db.prepare(`
-      UPDATE conversations
-      SET message_count = ?, sentiment_score = ?
-      WHERE id = ?
-    `).run(messageCount.count, avgSentiment.avg || 0.5, conversation.id);
+    const messageCount = messages?.length || 0;
+    const avgSentiment =
+      messages && messages.length > 0
+        ? messages.reduce((acc, m) => acc + (m.sentiment_score || 0.5), 0) /
+          messages.length
+        : 0.5;
 
-    return NextResponse.json({ success: true, messageId, conversationId: conversation.id });
+    await supabase
+      .from("conversations")
+      .update({
+        message_count: messageCount,
+        sentiment_score: avgSentiment,
+      })
+      .eq("id", conversationId);
+
+    return NextResponse.json({
+      success: true,
+      messageId: message.id,
+      conversationId,
+    });
   } catch (error) {
-    console.error('Error tracking conversation:', error);
-    return NextResponse.json({ error: 'Failed to track conversation' }, { status: 500 });
+    console.error("Error tracking conversation:", error);
+    return NextResponse.json(
+      { error: "Failed to track conversation" },
+      { status: 500 },
+    );
   }
 }
