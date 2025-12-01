@@ -45,15 +45,11 @@ export default function FloatingChatbot({
   const { messages, sendMessage: originalSendMessage, status } = useChat();
 
   // Wrap sendMessage to track analytics
-  const sendMessage = async (message: {
-    role: string;
-    parts: Array<{
-      type: string;
-      text?: string;
-      mediaType?: string;
-      url?: string;
-    }>;
-  }) => {
+  const sendMessage = async (
+    message: Parameters<typeof originalSendMessage>[0],
+  ) => {
+    if (!message) return;
+
     const content =
       message.parts
         ?.filter((p) => p.type === "text")
@@ -222,12 +218,10 @@ export default function FloatingChatbot({
       return;
     }
 
-    const parts: Array<{
-      type: string;
-      text?: string;
-      mediaType?: string;
-      url?: string;
-    }> = [];
+    const parts: Array<
+      | { type: "text"; text: string }
+      | { type: "file"; mediaType: string; url: string }
+    > = [];
 
     if (input.trim()) {
       parts.push({ type: "text", text: input });
