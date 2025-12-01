@@ -9,6 +9,7 @@ import {
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { clearDatabase, getMetrics } from "./actions";
+import { signout } from "../login/actions";
 
 interface Metrics {
   totalConversations: number;
@@ -138,15 +139,25 @@ export default function Dashboard() {
             className="object-contain"
           />
         </div>
-        <form action={clearAction}>
-          <button
-            type="submit"
-            disabled={isPending}
-            className="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 disabled:opacity-50 rounded-lg font-medium transition-colors"
-          >
-            {isPending ? "Clearing..." : "Clear Database"}
-          </button>
-        </form>
+        <div className="flex gap-3">
+          <form action={signout}>
+            <button
+              type="submit"
+              className="px-6 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg font-medium transition-colors"
+            >
+              Sign Out
+            </button>
+          </form>
+          <form action={clearAction}>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 disabled:opacity-50 rounded-lg font-medium transition-colors"
+            >
+              {isPending ? "Clearing..." : "Clear Database"}
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* Overview Section */}

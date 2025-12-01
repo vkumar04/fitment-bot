@@ -11,14 +11,15 @@
   },
   "type": "module",
   "dependencies": {
-    "@ai-sdk/openai": "^2.0.73",
-    "@ai-sdk/react": "^2.0.102",
+    "@ai-sdk/openai": "^2.0.75",
+    "@ai-sdk/react": "^2.0.104",
     "@prisma/client": "^7.0.1",
+    "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.86.0",
-    "ai": "^5.0.102",
+    "ai": "^5.0.104",
     "browser-image-compression": "^2.0.2",
     "dotenv": "^17.2.3",
-    "next": "16.0.5",
+    "next": "16.0.6",
     "openai": "^6.9.1",
     "prisma": "^7.0.1",
     "react": "19.2.0",
@@ -27,11 +28,11 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.0.5",
+    "eslint-config-next": "16.0.6",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
