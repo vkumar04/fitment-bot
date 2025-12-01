@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { login, signup } from "./actions";
+import { sendMagicLink } from "./actions";
 import Image from "next/image";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
@@ -16,47 +15,19 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-// Feature flag to enable/disable signup - set to false to hide signup
-const ENABLE_SIGNUP = true;
-
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [signupPassword, setSignupPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [emailSent, setEmailSent] = useState(false);
 
-  const handleLogin = async (formData: FormData) => {
+  const handleMagicLink = async (formData: FormData) => {
     setIsLoading(true);
     try {
-      await login(formData);
-      toast.success("Welcome back!");
+      await sendMagicLink(formData);
+      setEmailSent(true);
+      toast.success("Check your email for the magic link!");
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Invalid email or password";
-      toast.error(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSignup = async (formData: FormData) => {
-    // Validate passwords match
-    if (signupPassword !== confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-
-    if (signupPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await signup(formData);
-      toast.success("Account created! Check your email to confirm.");
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to create account";
+        error instanceof Error ? error.message : "Failed to send magic link";
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -77,125 +48,51 @@ export default function LoginPage() {
           />
         </div>
 
-        <Tabs defaultValue="signin" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signin">Sign In</TabsTrigger>
-            {ENABLE_SIGNUP && <TabsTrigger value="signup">Sign Up</TabsTrigger>}
-          </TabsList>
+        <Card>
+          <CardHeader>
+            <CardTitle>Welcome</CardTitle>
+            <CardDescription>
+              {emailSent
+                ? "We've sent you a magic link! Check your email to sign in."
+                : "Enter your email to receive a magic link"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!emailSent ? (
+              <form action={handleMagicLink} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
 
-          {/* Sign In Tab */}
-          <TabsContent value="signin">
-            <Card>
-              <CardHeader>
-                <CardTitle>Welcome Back</CardTitle>
-                <CardDescription>
-                  Sign in to access your dashboard
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form action={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <Input
-                      id="signin-email"
-                      name="email"
-                      type="email"
-                      placeholder="you@example.com"
-                      required
-                      disabled={isLoading}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
-                    <Input
-                      id="signin-password"
-                      name="password"
-                      type="password"
-                      placeholder="••••••••"
-                      required
-                      disabled={isLoading}
-                    />
-                  </div>
-
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Signing in..." : "Sign In"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Sign Up Tab */}
-          {ENABLE_SIGNUP && (
-            <TabsContent value="signup">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Create Account</CardTitle>
-                  <CardDescription>
-                    Sign up to get access to the dashboard
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form action={handleSignup} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-email">Email</Label>
-                      <Input
-                        id="signup-email"
-                        name="email"
-                        type="email"
-                        placeholder="you@example.com"
-                        required
-                        disabled={isLoading}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-password">Password</Label>
-                      <Input
-                        id="signup-password"
-                        name="password"
-                        type="password"
-                        placeholder="••••••••"
-                        required
-                        disabled={isLoading}
-                        value={signupPassword}
-                        onChange={(e) => setSignupPassword(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="confirm-password">Confirm Password</Label>
-                      <Input
-                        id="confirm-password"
-                        type="password"
-                        placeholder="••••••••"
-                        required
-                        disabled={isLoading}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                      />
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? "Creating account..." : "Sign Up"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
-        </Tabs>
-
-        {!ENABLE_SIGNUP && (
-          <p className="text-muted-foreground text-sm text-center mt-4">
-            Don&apos;t have an account? Contact your administrator.
-          </p>
-        )}
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Sending magic link..." : "Send Magic Link"}
+                </Button>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Click the link in your email to sign in. You can close this
+                  page.
+                </p>
+                <Button
+                  onClick={() => setEmailSent(false)}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Send Another Link
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
