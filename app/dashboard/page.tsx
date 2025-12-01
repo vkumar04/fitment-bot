@@ -9,6 +9,20 @@ import {
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { clearDatabase, getMetrics } from "./actions";
+import { signout } from "../login/actions";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
+import { MessageSquare, TrendingUp, Users, BarChart3 } from "lucide-react";
 
 interface Metrics {
   totalConversations: number;
@@ -40,15 +54,12 @@ async function clearDatabaseWithConfirm() {
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isPendingTransition, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   // Use useActionState for the clear database action (React 19)
-  const [clearState, clearAction, isPending] = useActionState(
-    async (_prevState: any, _formData: FormData) => {
-      return await clearDatabaseWithConfirm();
-    },
-    null,
-  );
+  const [clearState, clearAction, isPending] = useActionState(async () => {
+    return await clearDatabaseWithConfirm();
+  }, null);
 
   // Use optimistic updates
   const [optimisticMetrics, setOptimisticMetrics] = useOptimistic(
@@ -67,6 +78,7 @@ export default function Dashboard() {
       });
     } catch (error) {
       console.error("Error fetching metrics:", error);
+      toast.error("Failed to fetch metrics");
     } finally {
       setLoading(false);
     }
@@ -83,17 +95,17 @@ export default function Dashboard() {
   // Show success message after clearing and refresh metrics
   useEffect(() => {
     if (clearState?.success) {
-      alert("Database cleared successfully");
+      toast.success("Database cleared successfully");
       fetchMetrics();
     } else if (clearState?.error && clearState.error !== "Cancelled by user") {
-      alert("Failed to clear database");
+      toast.error("Failed to clear database");
     }
-  }, [clearState]);
+  }, [clearState, fetchMetrics]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-gray-400">Loading...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   }
@@ -126,7 +138,7 @@ export default function Dashboard() {
   ).toFixed(2);
 
   return (
-    <div className="min-h-screen bg-black text-white p-8">
+    <div className="min-h-screen bg-background p-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
@@ -138,21 +150,24 @@ export default function Dashboard() {
             className="object-contain"
           />
         </div>
-        <form action={clearAction}>
-          <button
-            type="submit"
-            disabled={isPending}
-            className="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 disabled:opacity-50 rounded-lg font-medium transition-colors"
-          >
-            {isPending ? "Clearing..." : "Clear Database"}
-          </button>
-        </form>
+        <div className="flex gap-3">
+          <form action={signout}>
+            <Button type="submit" variant="outline">
+              Sign Out
+            </Button>
+          </form>
+          <form action={clearAction}>
+            <Button type="submit" variant="destructive" disabled={isPending}>
+              {isPending ? "Clearing..." : "Clear Database"}
+            </Button>
+          </form>
+        </div>
       </div>
 
       {/* Overview Section */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Overview</h1>
-        <p className="text-gray-400">
+        <p className="text-muted-foreground">
           Monitor fitment assistant performance and customer interactions
         </p>
       </div>
@@ -160,173 +175,166 @@ export default function Dashboard() {
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Total Conversations */}
-        <div className="bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-xl p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <svg
-              className="w-5 h-5 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-              />
-            </svg>
-            <span className="text-gray-400 text-sm font-medium">
-              TOTAL CONVERSATIONS
-            </span>
-          </div>
-          <div className="flex items-end justify-between">
-            <div className="text-4xl font-bold">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Conversations
+            </CardTitle>
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
               {displayMetrics?.totalConversations || 0}
             </div>
-            <div
-              className={`text-sm ${parseFloat(totalChange) >= 0 ? "text-green-400" : "text-red-400"}`}
-            >
-              {parseFloat(totalChange) >= 0 ? "+" : ""}
-              {totalChange}%
-            </div>
-          </div>
-        </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              <span
+                className={
+                  parseFloat(totalChange) >= 0
+                    ? "text-green-500"
+                    : "text-red-500"
+                }
+              >
+                {parseFloat(totalChange) >= 0 ? "+" : ""}
+                {totalChange}%
+              </span>{" "}
+              from last period
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Today */}
-        <div className="bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-xl p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <svg
-              className="w-5 h-5 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-              />
-            </svg>
-            <span className="text-gray-400 text-sm font-medium">TODAY</span>
-          </div>
-          <div className="flex items-end justify-between">
-            <div className="text-4xl font-bold">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Today</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
               {displayMetrics?.todayConversations || 0}
             </div>
-            <div
-              className={`text-sm ${parseFloat(todayChange) >= 0 ? "text-green-400" : "text-red-400"}`}
-            >
-              {parseFloat(todayChange) >= 0 ? "+" : ""}
-              {todayChange}%
-            </div>
-          </div>
-        </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              <span
+                className={
+                  parseFloat(todayChange) >= 0
+                    ? "text-green-500"
+                    : "text-red-500"
+                }
+              >
+                {parseFloat(todayChange) >= 0 ? "+" : ""}
+                {todayChange}%
+              </span>{" "}
+              active now
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Active Now */}
-        <div className="bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-xl p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <svg
-              className="w-5 h-5 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            <span className="text-gray-400 text-sm font-medium">
-              ACTIVE NOW
-            </span>
-          </div>
-          <div className="flex items-end justify-between">
-            <div className="text-4xl font-bold">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Now</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
               {displayMetrics?.activeConversations || 0}
             </div>
-            <div className="text-gray-500 text-sm">-</div>
-          </div>
-        </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Live conversations
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Avg Sentiment */}
-        <div className="bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-xl p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <svg
-              className="w-5 h-5 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-              />
-            </svg>
-            <span className="text-gray-400 text-sm font-medium">
-              AVG. SENTIMENT
-            </span>
-          </div>
-          <div className="flex items-end justify-between">
-            <div className="text-4xl font-bold">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Avg. Sentiment
+            </CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
               {(displayMetrics?.averageSentiment || 0.5).toFixed(2)}
             </div>
-            <div
-              className={`text-sm ${parseFloat(sentimentChange) >= 0 ? "text-green-400" : "text-red-400"}`}
-            >
-              {parseFloat(sentimentChange) >= 0 ? "+" : ""}
-              {sentimentChange}
-            </div>
-          </div>
-        </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              <span
+                className={
+                  parseFloat(sentimentChange) >= 0
+                    ? "text-green-500"
+                    : "text-red-500"
+                }
+              >
+                {parseFloat(sentimentChange) >= 0 ? "+" : ""}
+                {sentimentChange}
+              </span>{" "}
+              from neutral
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Recent Conversations */}
-      <div className="bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-xl p-6">
-        <h2 className="text-xl font-bold mb-6">Recent Conversations</h2>
-
-        {displayMetrics?.recentConversations &&
-        displayMetrics.recentConversations.length > 0 ? (
-          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
-            {displayMetrics.recentConversations.map((conv, index) => (
-              <div
-                key={conv.id}
-                className="flex items-center justify-between py-4 border-b border-gray-800 last:border-0"
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`w-3 h-3 rounded-full ${conv.is_active ? "bg-green-400" : "bg-gray-600"}`}
-                  ></div>
-                  <div>
-                    <div className="text-gray-300 font-medium">
-                      Conversation #
-                      {displayMetrics.recentConversations.length - index}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Conversations</CardTitle>
+          <CardDescription>
+            Latest customer interactions with the fitment assistant
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {displayMetrics?.recentConversations &&
+          displayMetrics.recentConversations.length > 0 ? (
+            <ScrollArea className="h-[600px] pr-4">
+              <div className="space-y-4">
+                {displayMetrics.recentConversations.map((conv, index) => (
+                  <div key={conv.id}>
+                    <div className="flex items-center justify-between py-4">
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={`w-2 h-2 rounded-full ${conv.is_active ? "bg-green-500" : "bg-gray-500"}`}
+                        />
+                        <div>
+                          <div className="font-medium">
+                            Conversation #
+                            {displayMetrics.recentConversations.length - index}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {new Date(conv.started_at).toLocaleString()} •{" "}
+                            {conv.message_count} messages
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm text-muted-foreground mb-1">
+                          Sentiment
+                        </div>
+                        <Badge
+                          variant={
+                            conv.sentiment_score > 0.6
+                              ? "default"
+                              : conv.sentiment_score < 0.4
+                                ? "destructive"
+                                : "secondary"
+                          }
+                        >
+                          {conv.sentiment_score.toFixed(2)}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="text-gray-500 text-sm">
-                      {new Date(conv.started_at).toLocaleString()} •{" "}
-                      {conv.message_count} messages
-                    </div>
+                    {index < displayMetrics.recentConversations.length - 1 && (
+                      <Separator />
+                    )}
                   </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-gray-400 text-sm">Sentiment</div>
-                  <div className="text-gray-300 font-medium">
-                    {conv.sentiment_score.toFixed(2)}
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 text-gray-500">
-            No conversations yet
-          </div>
-        )}
-      </div>
+            </ScrollArea>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              No conversations yet
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

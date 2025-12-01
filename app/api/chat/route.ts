@@ -339,13 +339,13 @@ export async function POST(req: Request) {
             validCollectionUrls.push(parsed.collection_url);
           }
           if (Array.isArray(parsed)) {
-            parsed.forEach((item: any) => {
+            parsed.forEach((item: { collection_url?: string }) => {
               if (item.collection_url) {
                 validCollectionUrls.push(item.collection_url);
               }
             });
           }
-        } catch (e) {
+        } catch {
           // Not JSON, skip URL extraction
         }
       });
