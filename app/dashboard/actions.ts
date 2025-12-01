@@ -68,7 +68,7 @@ export async function getMetrics() {
       .select("shop_domain")
       .then(({ data }) => {
         if (!data) return { data: [] };
-        const grouped = data.reduce((acc: Record<string, number>, row) => {
+        const grouped = data.reduce((acc: any, row) => {
           acc[row.shop_domain] = (acc[row.shop_domain] || 0) + 1;
           return acc;
         }, {});
@@ -78,7 +78,7 @@ export async function getMetrics() {
               shop_domain,
               session_count: session_count as number,
             }))
-            .sort((a, b) => b.session_count - a.session_count),
+            .sort((a: any, b: any) => b.session_count - a.session_count),
         };
       });
 

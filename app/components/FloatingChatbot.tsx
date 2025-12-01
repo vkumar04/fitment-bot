@@ -4,20 +4,6 @@ import { useChat } from "@ai-sdk/react";
 import { useState, useEffect, useRef } from "react";
 import imageCompression from "browser-image-compression";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import {
-  MessageSquare,
-  X,
-  Image as ImageIcon,
-  Send,
-  Loader2,
-  User,
-} from "lucide-react";
 
 // Generate or retrieve session ID
 function getSessionId(): string {
@@ -31,6 +17,12 @@ function getSessionId(): string {
   return sessionId;
 }
 
+// Get shop domain from URL
+function getShopDomain(): string {
+  if (typeof window === "undefined") return "unknown";
+  return window.location.hostname;
+}
+
 interface FloatingChatbotProps {
   shopDomain?: string;
 }
@@ -40,22 +32,20 @@ export default function FloatingChatbot({
 }: FloatingChatbotProps = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [sessionId] = useState(getSessionId);
+  // Always prefer the prop value which comes from the URL parameter set by the embed script
   const shopDomain = propShopDomain;
 
   const { messages, sendMessage: originalSendMessage, status } = useChat();
 
   // Wrap sendMessage to track analytics
-  const sendMessage = async (
-    message: Parameters<typeof originalSendMessage>[0],
-  ) => {
-    if (!message) return;
-
+  const sendMessage = async (message: any) => {
     const content =
       message.parts
-        ?.filter((p) => p.type === "text")
-        .map((p) => p.text)
+        ?.filter((p: any) => p.type === "text")
+        .map((p: any) => p.text)
         .join(" ") || "";
-    const hasImages = message.parts?.some((p) => p.type === "file") || false;
+    const hasImages =
+      message.parts?.some((p: any) => p.type === "file") || false;
 
     // Track user message
     fetch("/api/analytics/track", {
@@ -70,6 +60,7 @@ export default function FloatingChatbot({
       }),
     }).catch((err) => console.error("Track error:", err));
 
+    // Send the message
     return originalSendMessage(message);
   };
 
@@ -80,6 +71,7 @@ export default function FloatingChatbot({
 
   // Render text with HTML anchor tags as clickable links
   const renderTextWithLinks = (text: string) => {
+    // Match HTML anchor tags: <a href="url" target="_blank">text</a>
     const linkRegex =
       /<a\s+href=['"]([^'"]+)['"](?:\s+target=['"]_blank['"])?>([^<]+)<\/a>/g;
     const parts: (string | React.ReactElement)[] = [];
@@ -87,10 +79,12 @@ export default function FloatingChatbot({
     let match;
 
     while ((match = linkRegex.exec(text)) !== null) {
+      // Add text before the link
       if (match.index > lastIndex) {
         parts.push(text.substring(lastIndex, match.index));
       }
 
+      // Add the link as a clickable React element
       const url = match[1];
       const linkText = match[2];
       parts.push(
@@ -99,7 +93,7 @@ export default function FloatingChatbot({
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary hover:underline"
+          className="text-blue-400 hover:text-blue-300 underline cursor-pointer"
         >
           {linkText}
         </a>,
@@ -108,6 +102,7 @@ export default function FloatingChatbot({
       lastIndex = match.index + match[0].length;
     }
 
+    // Add remaining text
     if (lastIndex < text.length) {
       parts.push(text.substring(lastIndex));
     }
@@ -118,7 +113,13 @@ export default function FloatingChatbot({
   // Communicate with parent window when embedded in iframe
   useEffect(() => {
     if (typeof window !== "undefined" && window.parent !== window) {
-      window.parent.postMessage({ type: "chatbot", isOpen }, "*");
+      if (isOpen) {
+        // Chat is open - iframe needs to be large
+        window.parent.postMessage({ type: "chatbot", isOpen: true }, "*");
+      } else {
+        // Chat is closed - iframe can be small (just the button)
+        window.parent.postMessage({ type: "chatbot", isOpen: false }, "*");
+      }
     }
   }, [isOpen]);
 
@@ -133,6 +134,7 @@ export default function FloatingChatbot({
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
 
+    // Only track if it's an assistant message, status is not streaming, and we haven't tracked this message yet
     if (
       lastMessage &&
       lastMessage.role === "assistant" &&
@@ -141,10 +143,11 @@ export default function FloatingChatbot({
     ) {
       const content =
         lastMessage.parts
-          ?.filter((p) => p.type === "text")
-          .map((p) => p.text)
+          ?.filter((p: any) => p.type === "text")
+          .map((p: any) => p.text)
           .join(" ") || "";
 
+      // Only track if content is not empty
       if (content.trim()) {
         lastTrackedMessageRef.current = lastMessage.id;
 
@@ -166,23 +169,27 @@ export default function FloatingChatbot({
   // Compress image before upload
   async function compressImage(file: File): Promise<File> {
     const options = {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 1024,
+      maxSizeMB: 1, // Max 1MB
+      maxWidthOrHeight: 1024, // Max 1024px
       useWebWorker: true,
       fileType: file.type,
     };
 
     try {
       const compressedFile = await imageCompression(file, options);
+      console.log(
+        `Compressed ${file.name} from ${(file.size / 1024 / 1024).toFixed(2)}MB to ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`,
+      );
       return compressedFile;
     } catch (error) {
       console.error("Error compressing image:", error);
-      return file;
+      return file; // Return original if compression fails
     }
   }
 
   // Convert files to data URLs
   async function convertFilesToDataURLs(files: File[]) {
+    // Compress images first
     const compressedFiles = await Promise.all(
       files.map((file) => compressImage(file)),
     );
@@ -218,15 +225,19 @@ export default function FloatingChatbot({
       return;
     }
 
-    const parts: Array<
-      | { type: "text"; text: string }
-      | { type: "file"; mediaType: string; url: string }
-    > = [];
+    const parts: Array<{
+      type: string;
+      text?: string;
+      mediaType?: string;
+      url?: string;
+    }> = [];
 
+    // Add text if present
     if (input.trim()) {
       parts.push({ type: "text", text: input });
     }
 
+    // Add files if present
     if (selectedFiles.length > 0) {
       const fileParts = await convertFilesToDataURLs(selectedFiles);
       parts.push(...fileParts);
@@ -234,7 +245,7 @@ export default function FloatingChatbot({
 
     sendMessage({
       role: "user",
-      parts,
+      parts: parts as any,
     });
 
     setInput("");
@@ -245,6 +256,7 @@ export default function FloatingChatbot({
     const files = Array.from(e.target.files || []);
     const imageFiles = files.filter((file) => file.type.startsWith("image/"));
 
+    // Limit to 3 images
     if (imageFiles.length > 3) {
       alert("Max 3 images per message");
       return;
@@ -257,12 +269,14 @@ export default function FloatingChatbot({
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Quick action for common vehicles
   const handleQuickAction = (vehicle: string) => {
     setInput(vehicle);
   };
 
   const isLoading = status === "streaming" || status === "submitted";
 
+  // Popular vehicles for quick actions
   const popularVehicles = [
     { label: "BRZ / 86", value: "2024 BRZ" },
     { label: "Civic", value: "2023 Civic" },
@@ -275,157 +289,232 @@ export default function FloatingChatbot({
   return (
     <>
       {/* Floating Chat Button */}
-      <Button
+      <button
         onClick={() => setIsOpen(!isOpen)}
-        size="icon"
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-700 hover:to-gray-800 text-white rounded-full shadow-xl flex items-center justify-center z-50 transition-all duration-300 hover:scale-110"
+        aria-label="Toggle chat"
       >
         {isOpen ? (
-          <X className="h-6 w-6" />
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
         ) : (
-          <MessageSquare className="h-6 w-6" />
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
+          </svg>
         )}
-      </Button>
+      </button>
 
       {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-24 right-6 w-96 max-w-[calc(100vw-3rem)] h-[600px] max-h-[80vh] flex flex-col z-50 shadow-2xl">
+        <div className="fixed bottom-24 right-6 w-96 max-w-[calc(100vw-3rem)] h-[600px] max-h-[80vh] bg-linear-to-b from-gray-900 to-black rounded-lg shadow-2xl flex flex-col z-50 border border-gray-800">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b">
+          <div className="bg-linear-to-r from-gray-800 to-gray-900 text-white p-4 rounded-t-lg flex items-center justify-between border-b border-gray-700">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <h3 className="font-semibold">Kansei Fitment Assistant</h3>
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <h3 className="font-semibold text-gray-100">
+                Kansei Fitment Assistant
+              </h3>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
+            <button
               onClick={() => setIsOpen(false)}
+              className="text-gray-300 hover:text-white hover:bg-gray-700 rounded p-1 transition-colors"
+              aria-label="Close chat"
             >
-              <X className="h-4 w-4" />
-            </Button>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
           </div>
 
           {/* Messages Container */}
-          <ScrollArea className="flex-1 p-4">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-950">
             {messages.length === 0 && (
-              <div className="text-center mt-4">
-                <div className="mb-4 flex justify-center">
-                  <ImageIcon className="h-16 w-16 text-muted-foreground" />
+              <div className="text-center text-gray-400 mt-4">
+                <div className="mb-4">
+                  <svg
+                    className="w-16 h-16 mx-auto text-gray-700"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
                 </div>
-                <p className="text-lg font-semibold mb-2">
+                <p className="text-lg font-semibold mb-2 text-gray-300">
                   Kansei Fitment Help
                 </p>
-                <p className="text-sm text-muted-foreground mb-4">
+                <p className="text-sm text-gray-500 mb-4">
                   Upload a pic or ask about wheels
                 </p>
 
+                {/* Quick Action Buttons */}
                 <div className="mt-4">
-                  <p className="text-xs text-muted-foreground mb-2">
+                  <p className="text-xs text-gray-600 mb-2">
                     Popular vehicles:
                   </p>
                   <div className="flex flex-wrap gap-2 justify-center">
                     {popularVehicles.map((vehicle) => (
-                      <Badge
+                      <button
                         key={vehicle.value}
-                        variant="secondary"
-                        className="cursor-pointer"
                         onClick={() => handleQuickAction(vehicle.value)}
+                        className="px-3 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg border border-gray-700 transition-colors"
                       >
                         {vehicle.label}
-                      </Badge>
+                      </button>
                     ))}
                   </div>
                 </div>
               </div>
             )}
 
-            <div className="space-y-4">
-              {messages.map((m) => (
+            {messages.map((m) => (
+              <div
+                key={m.id}
+                className={`flex gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                {/* Bot Avatar */}
+                {m.role === "assistant" && (
+                  <div className="shrink-0 w-8 h-8 rounded-full bg-white border border-gray-600 flex items-center justify-center overflow-hidden">
+                    <Image
+                      src="/kansei-logo.png"
+                      alt="Kansei"
+                      width={32}
+                      height={32}
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+
                 <div
-                  key={m.id}
-                  className={`flex gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                  className={`max-w-[75%] rounded-lg px-4 py-3 ${
+                    m.role === "user"
+                      ? "bg-linear-to-r from-gray-700 to-gray-800 text-white shadow-lg"
+                      : "bg-gray-800 text-gray-100 border border-gray-700"
+                  }`}
                 >
-                  {m.role === "assistant" && (
-                    <Avatar className="h-8 w-8 shrink-0">
-                      <AvatarImage src="/kansei-logo.png" alt="Kansei" />
-                      <AvatarFallback>K</AvatarFallback>
-                    </Avatar>
-                  )}
+                  {m.parts.map((part, index) => {
+                    if (part.type === "text") {
+                      return (
+                        <div
+                          key={index}
+                          className="whitespace-pre-wrap text-sm leading-relaxed"
+                        >
+                          {renderTextWithLinks(part.text)}
+                        </div>
+                      );
+                    }
+                    if (
+                      part.type === "file" &&
+                      part.mediaType?.startsWith("image/")
+                    ) {
+                      return (
+                        <div
+                          key={index}
+                          className="mt-2 relative w-full max-w-sm"
+                        >
+                          <Image
+                            src={part.url}
+                            alt="Uploaded car"
+                            width={400}
+                            height={300}
+                            className="rounded-lg w-full h-auto"
+                          />
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
 
-                  <div
-                    className={`max-w-[75%] rounded-lg px-4 py-3 ${
-                      m.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
-                    }`}
-                  >
-                    {m.parts.map((part, index) => {
-                      if (part.type === "text") {
-                        return (
-                          <div
-                            key={index}
-                            className="whitespace-pre-wrap text-sm leading-relaxed"
-                          >
-                            {renderTextWithLinks(part.text)}
-                          </div>
-                        );
-                      }
-                      if (
-                        part.type === "file" &&
-                        part.mediaType?.startsWith("image/")
-                      ) {
-                        return (
-                          <div
-                            key={index}
-                            className="mt-2 relative w-full max-w-sm"
-                          >
-                            <Image
-                              src={part.url}
-                              alt="Uploaded car"
-                              width={400}
-                              height={300}
-                              className="rounded-lg w-full h-auto"
-                            />
-                          </div>
-                        );
-                      }
-                      return null;
-                    })}
+                {/* User Avatar */}
+                {m.role === "user" && (
+                  <div className="shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-gray-600 to-gray-700 border border-gray-500 flex items-center justify-center">
+                    <svg
+                      className="w-5 h-5 text-gray-200"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
                   </div>
+                )}
+              </div>
+            ))}
 
-                  {m.role === "user" && (
-                    <Avatar className="h-8 w-8 shrink-0">
-                      <AvatarFallback>
-                        <User className="h-4 w-4" />
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                </div>
-              ))}
-
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-muted rounded-lg px-4 py-3 flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Thinking...</span>
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="bg-gray-800 text-gray-100 border border-gray-700 rounded-lg px-4 py-3">
+                  <div className="flex gap-1">
+                    <div
+                      className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"
+                      style={{ animationDelay: "0ms" }}
+                    ></div>
+                    <div
+                      className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"
+                      style={{ animationDelay: "150ms" }}
+                    ></div>
+                    <div
+                      className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"
+                      style={{ animationDelay: "300ms" }}
+                    ></div>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {status === "error" && (
-                <div className="flex justify-center">
-                  <Badge variant="destructive">
-                    Failed to send message. Please try again.
-                  </Badge>
+            {status === "error" && (
+              <div className="flex justify-center">
+                <div className="bg-red-900/50 border border-red-700 text-red-200 rounded-lg px-4 py-2 text-sm">
+                  Failed to send message. Please try again.
                 </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          </ScrollArea>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
 
           {/* Image Preview */}
           {selectedFiles.length > 0 && (
-            <div className="px-4 py-2 border-t">
+            <div className="px-4 py-2 bg-gray-900 border-t border-gray-800">
               <div className="flex gap-2 overflow-x-auto">
                 {selectedFiles.map((file, index) => (
                   <div key={index} className="relative group">
@@ -434,62 +523,102 @@ export default function FloatingChatbot({
                       alt={`Preview ${index + 1}`}
                       width={64}
                       height={64}
-                      className="h-16 w-16 object-cover rounded border"
+                      className="h-16 w-16 object-cover rounded border border-gray-700"
                     />
-                    <Button
-                      size="icon"
-                      variant="destructive"
-                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    <button
                       onClick={() => removeFile(index)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <X className="h-3 w-3" />
-                    </Button>
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-yellow-500 mt-1">
+              <p className="text-xs text-yellow-400 mt-1">
                 💡 For best results: side profile, clear wheel view
               </p>
             </div>
           )}
 
           {/* Input Form */}
-          <form onSubmit={handleSubmit} className="p-4 border-t flex gap-2">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              accept="image/*"
-              multiple
-              className="hidden"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading}
-            >
-              <ImageIcon className="h-4 w-4" />
-            </Button>
-            <Input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="What's your ride?"
-              disabled={isLoading}
-            />
-            <Button
-              type="submit"
-              size="icon"
-              disabled={
-                isLoading || (!input.trim() && selectedFiles.length === 0)
-              }
-            >
-              <Send className="h-4 w-4" />
-            </Button>
+          <form
+            onSubmit={handleSubmit}
+            className="p-4 border-t border-gray-800 bg-gray-900 rounded-b-lg"
+          >
+            <div className="flex gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept="image/*"
+                multiple
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 rounded-lg px-3 py-2 transition-colors"
+                disabled={isLoading}
+                title="Upload car image (max 3)"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+              </button>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="What's your ride?"
+                className="flex-1 bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:border-transparent text-sm"
+                disabled={isLoading}
+              />
+              <button
+                type="submit"
+                disabled={
+                  isLoading || (!input.trim() && selectedFiles.length === 0)
+                }
+                className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 disabled:from-gray-800 disabled:to-gray-900 disabled:opacity-50 text-white rounded-lg px-4 py-2 transition-all duration-200 hover:shadow-lg disabled:cursor-not-allowed"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                  />
+                </svg>
+              </button>
+            </div>
           </form>
-        </Card>
+        </div>
       )}
     </>
   );

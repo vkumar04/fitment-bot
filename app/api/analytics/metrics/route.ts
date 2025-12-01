@@ -41,16 +41,16 @@ export async function GET() {
 
     const shopBreakdown = allConversations
       ? Object.entries(
-          allConversations.reduce((acc: Record<string, number>, row) => {
+          allConversations.reduce((acc: any, row) => {
             acc[row.shop_domain] = (acc[row.shop_domain] || 0) + 1;
             return acc;
           }, {}),
         )
           .map(([shop_domain, session_count]) => ({
             shop_domain,
-            session_count: session_count as number,
+            session_count,
           }))
-          .sort((a, b) => b.session_count - a.session_count)
+          .sort((a: any, b: any) => b.session_count - a.session_count)
       : [];
 
     // Get recent conversations
