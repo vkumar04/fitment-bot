@@ -3,106 +3,199 @@
 import { useState } from "react";
 import { login, signup } from "./actions";
 import Image from "next/image";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 // Feature flag to enable/disable signup - set to false to hide signup
 const ENABLE_SIGNUP = true;
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [signupPassword, setSignupPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
-  const handleSubmit = async (formData: FormData, action: "login" | "signup") => {
+  const handleLogin = async (formData: FormData) => {
     setIsLoading(true);
     try {
-      if (action === "login") {
-        await login(formData);
-      } else {
-        await signup(formData);
-      }
+      await login(formData);
+      toast.success("Welcome back!");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Invalid email or password";
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignup = async (formData: FormData) => {
+    // Validate passwords match
+    if (signupPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    if (signupPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await signup(formData);
+      toast.success("Account created! Check your email to confirm.");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to create account";
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-xl p-8 shadow-2xl">
-          {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <Image
-              src="/kansei-logo.png"
-              alt="Kansei"
-              width={150}
-              height={50}
-              className="object-contain"
-            />
-          </div>
-
-          <h1 className="text-2xl font-bold text-center mb-2">
-            Dashboard Access
-          </h1>
-          <p className="text-gray-400 text-center mb-8">
-            Sign in to view analytics
-          </p>
-
-          <form className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                disabled={isLoading}
-                className="w-full bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:border-transparent disabled:opacity-50"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                disabled={isLoading}
-                className="w-full bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:border-transparent disabled:opacity-50"
-                placeholder="••••••••"
-              />
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                formAction={(formData) => handleSubmit(formData, "login")}
-                disabled={isLoading}
-                className="flex-1 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 disabled:from-gray-800 disabled:to-gray-900 disabled:opacity-50 text-white rounded-lg px-4 py-3 font-medium transition-all duration-200 hover:shadow-lg disabled:cursor-not-allowed"
-              >
-                {isLoading ? "Loading..." : "Sign In"}
-              </button>
-
-              {ENABLE_SIGNUP && (
-                <button
-                  formAction={(formData) => handleSubmit(formData, "signup")}
-                  disabled={isLoading}
-                  className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:opacity-50 border border-gray-700 text-white rounded-lg px-4 py-3 font-medium transition-all duration-200 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? "Loading..." : "Sign Up"}
-                </button>
-              )}
-            </div>
-          </form>
-
-          {!ENABLE_SIGNUP && (
-            <p className="text-gray-500 text-sm text-center mt-4">
-              Don't have an account? Contact your administrator.
-            </p>
-          )}
+        {/* Logo */}
+        <div className="flex justify-center mb-8">
+          <Image
+            src="/kansei-logo.png"
+            alt="Kansei"
+            width={150}
+            height={50}
+            className="object-contain"
+          />
         </div>
+
+        <Tabs defaultValue="signin" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="signin">Sign In</TabsTrigger>
+            {ENABLE_SIGNUP && <TabsTrigger value="signup">Sign Up</TabsTrigger>}
+          </TabsList>
+
+          {/* Sign In Tab */}
+          <TabsContent value="signin">
+            <Card>
+              <CardHeader>
+                <CardTitle>Welcome Back</CardTitle>
+                <CardDescription>
+                  Sign in to access your dashboard
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form action={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signin-email">Email</Label>
+                    <Input
+                      id="signin-email"
+                      name="email"
+                      type="email"
+                      placeholder="you@example.com"
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signin-password">Password</Label>
+                    <Input
+                      id="signin-password"
+                      name="password"
+                      type="password"
+                      placeholder="••••••••"
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Signing in..." : "Sign In"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Sign Up Tab */}
+          {ENABLE_SIGNUP && (
+            <TabsContent value="signup">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Create Account</CardTitle>
+                  <CardDescription>
+                    Sign up to get access to the dashboard
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form action={handleSignup} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-email">Email</Label>
+                      <Input
+                        id="signup-email"
+                        name="email"
+                        type="email"
+                        placeholder="you@example.com"
+                        required
+                        disabled={isLoading}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-password">Password</Label>
+                      <Input
+                        id="signup-password"
+                        name="password"
+                        type="password"
+                        placeholder="••••••••"
+                        required
+                        disabled={isLoading}
+                        value={signupPassword}
+                        onChange={(e) => setSignupPassword(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">Confirm Password</Label>
+                      <Input
+                        id="confirm-password"
+                        type="password"
+                        placeholder="••••••••"
+                        required
+                        disabled={isLoading}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                    </div>
+
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? "Creating account..." : "Sign Up"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+        </Tabs>
+
+        {!ENABLE_SIGNUP && (
+          <p className="text-muted-foreground text-sm text-center mt-4">
+            Don&apos;t have an account? Contact your administrator.
+          </p>
+        )}
       </div>
     </div>
   );
