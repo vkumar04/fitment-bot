@@ -15,6 +15,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
+// Feature flag to enable/disable signup - set to false to disable new user signups
+const ENABLE_SIGNUP = true;
+
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
@@ -93,6 +96,12 @@ export default function LoginPage() {
             )}
           </CardContent>
         </Card>
+
+        {!ENABLE_SIGNUP && (
+          <p className="text-muted-foreground text-sm text-center mt-4">
+            New signups are disabled. Contact your administrator for access.
+          </p>
+        )}
       </div>
     </div>
   );
