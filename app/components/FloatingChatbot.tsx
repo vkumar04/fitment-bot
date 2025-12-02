@@ -86,12 +86,20 @@ export default function FloatingChatbot({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const stopRef = useRef(stop);
   const statusRef = useRef(status);
+  const hasConversationRef = useRef(false);
 
   // Keep refs updated
   useEffect(() => {
     stopRef.current = stop;
     statusRef.current = status;
   });
+
+  // Track when a conversation has been created
+  useEffect(() => {
+    if (messages.length > 0) {
+      hasConversationRef.current = true;
+    }
+  }, [messages.length]);
 
   // Render text with HTML anchor tags as clickable links
   const renderTextWithLinks = (text: string) => {
@@ -149,8 +157,9 @@ export default function FloatingChatbot({
         stopRef.current();
       }
 
-      // Mark conversation as inactive
-      if (messages.length > 0) {
+      // Mark conversation as inactive (only if we've created one)
+      if (hasConversationRef.current) {
+        console.log("Deactivating conversation:", sessionId);
         fetch("/api/analytics/deactivate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -158,8 +167,9 @@ export default function FloatingChatbot({
         }).catch((err) => console.error("Deactivate error:", err));
       }
     } else {
-      // Mark conversation as active when opened
-      if (messages.length > 0) {
+      // Mark conversation as active when opened (only if we've created one)
+      if (hasConversationRef.current) {
+        console.log("Activating conversation:", sessionId);
         fetch("/api/analytics/activate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -167,7 +177,7 @@ export default function FloatingChatbot({
         }).catch((err) => console.error("Activate error:", err));
       }
     }
-  }, [isOpen, sessionId, messages.length]);
+  }, [isOpen, sessionId]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -310,7 +320,7 @@ export default function FloatingChatbot({
 
   const handleNewConversation = async () => {
     // Deactivate current conversation
-    if (messages.length > 0) {
+    if (hasConversationRef.current) {
       await fetch("/api/analytics/deactivate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -322,6 +332,9 @@ export default function FloatingChatbot({
     setMessages([]);
     setInput("");
     setSelectedFiles([]);
+
+    // Reset conversation tracking
+    hasConversationRef.current = false;
 
     // Generate new session ID
     const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

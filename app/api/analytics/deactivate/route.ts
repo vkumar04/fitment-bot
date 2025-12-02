@@ -6,17 +6,15 @@ export async function POST(req: Request) {
     const { sessionId } = await req.json();
 
     if (!sessionId) {
-      return NextResponse.json(
-        { error: "Missing sessionId" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Missing sessionId" }, { status: 400 });
     }
 
     // Mark conversation as inactive
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("conversations")
       .update({ is_active: false })
-      .eq("session_id", sessionId);
+      .eq("session_id", sessionId)
+      .select();
 
     if (error) {
       console.error("Error deactivating conversation:", error);
@@ -26,7 +24,8 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ success: true });
+    console.log(`Deactivated conversation for session ${sessionId}:`, data);
+    return NextResponse.json({ success: true, updated: data?.length || 0 });
   } catch (error) {
     console.error("Error in deactivate endpoint:", error);
     return NextResponse.json(
