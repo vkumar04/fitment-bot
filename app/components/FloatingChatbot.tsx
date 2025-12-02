@@ -17,6 +17,7 @@ import {
   Send,
   Loader2,
   User,
+  RotateCcw,
 } from "lucide-react";
 
 // Generate or retrieve session ID
@@ -39,7 +40,7 @@ export default function FloatingChatbot({
   shopDomain: propShopDomain = "unknown",
 }: FloatingChatbotProps = {}) {
   const [isOpen, setIsOpen] = useState(false);
-  const [sessionId] = useState(getSessionId);
+  const [sessionId, setSessionId] = useState(getSessionId);
   const shopDomain = propShopDomain;
 
   const {
@@ -47,6 +48,7 @@ export default function FloatingChatbot({
     sendMessage: originalSendMessage,
     status,
     stop,
+    setMessages,
   } = useChat();
 
   // Wrap sendMessage to track analytics
@@ -135,15 +137,37 @@ export default function FloatingChatbot({
     }
   }, [isOpen]);
 
-  // Stop streaming when chat is closed
+  // Stop streaming and mark conversation as inactive when chat is closed
+  // Mark conversation as active when chat is opened
   useEffect(() => {
-    if (
-      !isOpen &&
-      (statusRef.current === "streaming" || statusRef.current === "submitted")
-    ) {
-      stopRef.current();
+    if (!isOpen) {
+      // Stop any active streaming
+      if (
+        statusRef.current === "streaming" ||
+        statusRef.current === "submitted"
+      ) {
+        stopRef.current();
+      }
+
+      // Mark conversation as inactive
+      if (messages.length > 0) {
+        fetch("/api/analytics/deactivate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        }).catch((err) => console.error("Deactivate error:", err));
+      }
+    } else {
+      // Mark conversation as active when opened
+      if (messages.length > 0) {
+        fetch("/api/analytics/activate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        }).catch((err) => console.error("Activate error:", err));
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, sessionId, messages.length]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -284,6 +308,27 @@ export default function FloatingChatbot({
     setInput(vehicle);
   };
 
+  const handleNewConversation = async () => {
+    // Deactivate current conversation
+    if (messages.length > 0) {
+      await fetch("/api/analytics/deactivate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      }).catch((err) => console.error("Deactivate error:", err));
+    }
+
+    // Clear messages and input
+    setMessages([]);
+    setInput("");
+    setSelectedFiles([]);
+
+    // Generate new session ID
+    const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    sessionStorage.setItem("chatbot_session_id", newSessionId);
+    setSessionId(newSessionId);
+  };
+
   const isLoading = status === "streaming" || status === "submitted";
 
   const popularVehicles = [
@@ -319,13 +364,25 @@ export default function FloatingChatbot({
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               <h3 className="font-semibold">Kansei Fitment Assistant</h3>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              {messages.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleNewConversation}
+                  title="New Conversation"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Messages Container */}
