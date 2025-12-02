@@ -431,8 +431,8 @@ export default function FloatingChatbot({
                 </div>
 
                 {/* Disclaimer - only shown on initial screen */}
-                <div className="mt-6 px-2">
-                  <p className="text-[10px] leading-relaxed text-muted-foreground/60">
+                <div className="mt-8 px-4 pb-4">
+                  <p className="text-[9px] leading-[1.4] text-muted-foreground/70 text-center">
                     All results are for informational purposes only. Fitment
                     must be independently verified. WheelPrice and partners are
                     not liable for any incorrect fitment or resulting costs or
