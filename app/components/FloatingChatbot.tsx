@@ -425,7 +425,7 @@ export default function FloatingChatbot({
 
           {/* Image Preview */}
           {selectedFiles.length > 0 && (
-            <div className="px-4 py-2 border-t">
+            <div className="px-4 py-2 border-t flex-shrink-0">
               <div className="flex gap-2 overflow-x-auto">
                 {selectedFiles.map((file, index) => (
                   <div key={index} className="relative group">
@@ -454,7 +454,10 @@ export default function FloatingChatbot({
           )}
 
           {/* Input Form */}
-          <form onSubmit={handleSubmit} className="p-4 border-t flex gap-2">
+          <form
+            onSubmit={handleSubmit}
+            className="p-4 border-t flex gap-2 flex-shrink-0"
+          >
             <input
               type="file"
               ref={fileInputRef}
