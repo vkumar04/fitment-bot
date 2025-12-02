@@ -392,7 +392,7 @@ export default function FloatingChatbot({
 
       {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-24 right-6 w-96 max-w-[calc(100vw-3rem)] h-[600px] max-h-[80vh] flex flex-col z-50 shadow-2xl overflow-hidden">
+        <Card className="fixed bottom-24 right-6 w-96 max-w-[calc(100vw-3rem)] h-[700px] max-h-[85vh] flex flex-col z-50 shadow-2xl overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
             <div className="flex items-center gap-2">
