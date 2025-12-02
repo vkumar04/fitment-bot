@@ -289,9 +289,9 @@ export default function FloatingChatbot({
 
       {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-24 right-6 w-96 max-w-[calc(100vw-3rem)] h-[600px] max-h-[80vh] flex flex-col z-50 shadow-2xl">
+        <Card className="fixed bottom-24 right-6 w-96 max-w-[calc(100vw-3rem)] h-[600px] max-h-[80vh] flex flex-col z-50 shadow-2xl overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               <h3 className="font-semibold">Kansei Fitment Assistant</h3>
@@ -306,7 +306,7 @@ export default function FloatingChatbot({
           </div>
 
           {/* Messages Container */}
-          <ScrollArea className="flex-1 p-4">
+          <ScrollArea className="flex-1 p-4 overflow-y-auto">
             {messages.length === 0 && (
               <div className="text-center mt-4">
                 <div className="mb-4 flex justify-center">
