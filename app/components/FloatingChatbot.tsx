@@ -392,7 +392,7 @@ export default function FloatingChatbot({
 
       {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-24 right-6 w-96 max-w-[calc(100vw-3rem)] h-[700px] max-h-[85vh] flex flex-col z-50 shadow-2xl overflow-hidden">
+        <Card className="fixed bottom-24 right-6 w-96 max-w-[calc(100vw-3rem)] h-[750px] max-h-[90vh] flex flex-col z-50 shadow-2xl overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
             <div className="flex items-center gap-2">
@@ -421,7 +421,7 @@ export default function FloatingChatbot({
           </div>
 
           {/* Messages Container */}
-          <ScrollArea className="flex-1 p-4 overflow-y-auto">
+          <ScrollArea className="flex-1 min-h-0 p-4 overflow-y-auto">
             {messages.length === 0 && (
               <div className="text-center mt-4">
                 <div className="mb-4 flex justify-center">

@@ -41,9 +41,9 @@
 
     if (event.data && event.data.type === "chatbot") {
       if (event.data.isOpen) {
-        // Chat is open - expand to fit chat window (approx 450px width, 700px height)
+        // Chat is open - expand to fit chat window (approx 450px width, 850px height)
         iframe.style.width = "450px";
-        iframe.style.height = "700px";
+        iframe.style.height = "850px";
         iframe.style.pointerEvents = "auto";
       } else {
         // Chat is closed - shrink to just the button size
