@@ -238,9 +238,7 @@ Want tire sizes too?"
 5. LIABILITY DISCLAIMER
 
 
-Append this EXACT line to every response:
-
-"All results are for informational purposes only. Fitment must be independently verified. WheelPrice and partners are not liable for any incorrect fitment or resulting costs or damages."
+DO NOT include a disclaimer in your responses. The disclaimer is displayed separately in the UI.
 
 
 
@@ -384,12 +382,16 @@ ${contextText ? `\n\n===== VECTOR DB DATA =====\n${contextText}\n===== END VECTO
       model,
       messages: convertToModelMessages([systemMessage, ...messages]),
       temperature: 0.3,
+      abortSignal: req.signal,
       onFinish: async ({ text }) => {
         // Validate URLs in the response
         const validated = validateAndFilterUrls(text, validCollectionUrls);
         if (validated !== text) {
           console.warn("Response contained invalid URLs that were flagged");
         }
+      },
+      onAbort: () => {
+        console.log("Stream aborted by client");
       },
     });
 
@@ -413,6 +415,10 @@ ${contextText ? `\n\n===== VECTOR DB DATA =====\n${contextText}\n===== END VECTO
       model: openai("gpt-4o"),
       messages: convertToModelMessages([systemMessage, ...messages]),
       temperature: 0.3,
+      abortSignal: req.signal,
+      onAbort: () => {
+        console.log("Stream aborted by client (fallback path)");
+      },
     });
 
     return result.toUIMessageStreamResponse();

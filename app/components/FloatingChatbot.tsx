@@ -42,7 +42,12 @@ export default function FloatingChatbot({
   const [sessionId] = useState(getSessionId);
   const shopDomain = propShopDomain;
 
-  const { messages, sendMessage: originalSendMessage, status } = useChat();
+  const {
+    messages,
+    sendMessage: originalSendMessage,
+    status,
+    stop,
+  } = useChat();
 
   // Wrap sendMessage to track analytics
   const sendMessage = async (
@@ -77,6 +82,14 @@ export default function FloatingChatbot({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const stopRef = useRef(stop);
+  const statusRef = useRef(status);
+
+  // Keep refs updated
+  useEffect(() => {
+    stopRef.current = stop;
+    statusRef.current = status;
+  });
 
   // Render text with HTML anchor tags as clickable links
   const renderTextWithLinks = (text: string) => {
@@ -119,6 +132,16 @@ export default function FloatingChatbot({
   useEffect(() => {
     if (typeof window !== "undefined" && window.parent !== window) {
       window.parent.postMessage({ type: "chatbot", isOpen }, "*");
+    }
+  }, [isOpen]);
+
+  // Stop streaming when chat is closed
+  useEffect(() => {
+    if (
+      !isOpen &&
+      (statusRef.current === "streaming" || statusRef.current === "submitted")
+    ) {
+      stopRef.current();
     }
   }, [isOpen]);
 
@@ -335,6 +358,16 @@ export default function FloatingChatbot({
                       </Badge>
                     ))}
                   </div>
+                </div>
+
+                {/* Disclaimer - only shown on initial screen */}
+                <div className="mt-6 px-2">
+                  <p className="text-[10px] leading-relaxed text-muted-foreground/60">
+                    All results are for informational purposes only. Fitment
+                    must be independently verified. WheelPrice and partners are
+                    not liable for any incorrect fitment or resulting costs or
+                    damages.
+                  </p>
                 </div>
               </div>
             )}
