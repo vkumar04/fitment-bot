@@ -353,7 +353,7 @@ export default function FloatingChatbot({
                   )}
 
                   <div
-                    className={`max-w-[75%] rounded-lg px-4 py-3 ${
+                    className={`max-w-[75%] rounded-lg px-4 py-3 break-words overflow-hidden ${
                       m.role === "user"
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted"
