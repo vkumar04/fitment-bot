@@ -64,6 +64,9 @@ export default function FloatingChatbot({
         .join(" ") || "";
     const hasImages = message.parts?.some((p) => p.type === "file") || false;
 
+    // Mark that we have a conversation (will be created in track endpoint)
+    hasConversationRef.current = true;
+
     // Track user message
     fetch("/api/analytics/track", {
       method: "POST",
@@ -183,6 +186,25 @@ export default function FloatingChatbot({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Deactivate conversation when page is closed/refreshed
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (hasConversationRef.current) {
+        console.log("Page unloading, deactivating conversation:", sessionId);
+        // Use fetch with keepalive for reliable delivery during page unload
+        fetch("/api/analytics/deactivate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+          keepalive: true,
+        }).catch((err) => console.error("Deactivate on unload error:", err));
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [sessionId]);
 
   // Track assistant responses (only when complete)
   const lastTrackedMessageRef = useRef<string | null>(null);
