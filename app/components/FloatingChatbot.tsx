@@ -95,15 +95,18 @@ export default function FloatingChatbot({
 
   // Render text with HTML anchor tags as clickable links
   const renderTextWithLinks = (text: string) => {
+    // First, remove all ** markdown characters
+    const cleanedText = text.replace(/\*\*/g, "");
+
     const linkRegex =
       /<a\s+href=['"]([^'"]+)['"](?:\s+target=['"]_blank['"])?>([^<]+)<\/a>/g;
     const parts: (string | React.ReactElement)[] = [];
     let lastIndex = 0;
     let match;
 
-    while ((match = linkRegex.exec(text)) !== null) {
+    while ((match = linkRegex.exec(cleanedText)) !== null) {
       if (match.index > lastIndex) {
-        parts.push(text.substring(lastIndex, match.index));
+        parts.push(cleanedText.substring(lastIndex, match.index));
       }
 
       const url = match[1];
@@ -123,11 +126,11 @@ export default function FloatingChatbot({
       lastIndex = match.index + match[0].length;
     }
 
-    if (lastIndex < text.length) {
-      parts.push(text.substring(lastIndex));
+    if (lastIndex < cleanedText.length) {
+      parts.push(cleanedText.substring(lastIndex));
     }
 
-    return parts.length > 0 ? parts : text;
+    return parts.length > 0 ? parts : cleanedText;
   };
 
   // Communicate with parent window when embedded in iframe
