@@ -2,7 +2,6 @@
 
 import { useChat } from "@ai-sdk/react";
 import { useState, useEffect, useRef } from "react";
-import imageCompression from "browser-image-compression";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,15 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  MessageSquare,
-  X,
-  Image as ImageIcon,
-  Send,
-  Loader2,
-  User,
-  RotateCcw,
-} from "lucide-react";
+import { MessageSquare, X, Send, Loader2, User, RotateCcw } from "lucide-react";
 
 // Generate or retrieve session ID
 function getSessionId(): string {
@@ -84,8 +75,6 @@ export default function FloatingChatbot({
   };
 
   const [input, setInput] = useState("");
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const stopRef = useRef(stop);
   const statusRef = useRef(status);
@@ -242,98 +231,19 @@ export default function FloatingChatbot({
     }
   }, [messages, status, sessionId, shopDomain]);
 
-  // Compress image before upload
-  async function compressImage(file: File): Promise<File> {
-    const options = {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 1024,
-      useWebWorker: true,
-      fileType: file.type,
-    };
-
-    try {
-      const compressedFile = await imageCompression(file, options);
-      return compressedFile;
-    } catch (error) {
-      console.error("Error compressing image:", error);
-      return file;
-    }
-  }
-
-  // Convert files to data URLs
-  async function convertFilesToDataURLs(files: File[]) {
-    const compressedFiles = await Promise.all(
-      files.map((file) => compressImage(file)),
-    );
-
-    return Promise.all(
-      compressedFiles.map(
-        (file) =>
-          new Promise<{ type: "file"; mediaType: string; url: string }>(
-            (resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => {
-                resolve({
-                  type: "file",
-                  mediaType: file.type,
-                  url: reader.result as string,
-                });
-              };
-              reader.onerror = reject;
-              reader.readAsDataURL(file);
-            },
-          ),
-      ),
-    );
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (
-      (!input.trim() && selectedFiles.length === 0) ||
-      status === "streaming"
-    ) {
+    if (!input.trim() || status === "streaming") {
       return;
-    }
-
-    const parts: Array<
-      | { type: "text"; text: string }
-      | { type: "file"; mediaType: string; url: string }
-    > = [];
-
-    if (input.trim()) {
-      parts.push({ type: "text", text: input });
-    }
-
-    if (selectedFiles.length > 0) {
-      const fileParts = await convertFilesToDataURLs(selectedFiles);
-      parts.push(...fileParts);
     }
 
     sendMessage({
       role: "user",
-      parts,
+      parts: [{ type: "text", text: input }],
     });
 
     setInput("");
-    setSelectedFiles([]);
-  };
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
-
-    if (imageFiles.length > 3) {
-      alert("Max 3 images per message");
-      return;
-    }
-
-    setSelectedFiles(imageFiles);
-  };
-
-  const removeFile = (index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleQuickAction = (vehicle: string) => {
@@ -350,13 +260,12 @@ export default function FloatingChatbot({
       }).catch((err) => console.error("Deactivate error:", err));
     }
 
+    // Reset conversation tracking after deactivation
+    hasConversationRef.current = false;
+
     // Clear messages and input
     setMessages([]);
     setInput("");
-    setSelectedFiles([]);
-
-    // Reset conversation tracking
-    hasConversationRef.current = false;
 
     // Generate new session ID
     const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -366,13 +275,16 @@ export default function FloatingChatbot({
 
   const isLoading = status === "streaming" || status === "submitted";
 
-  const popularVehicles = [
-    { label: "BRZ / 86", value: "2024 BRZ" },
-    { label: "Civic", value: "2023 Civic" },
-    { label: "E46 BMW", value: "E46 BMW" },
-    { label: "350Z", value: "350Z" },
-    { label: "WRX", value: "2022 WRX" },
-    { label: "Miata", value: "ND Miata" },
+  const quickPrompts = [
+    { label: "What wheels fit my car?", value: "What wheels fit my car?" },
+    {
+      label: "Show me Kansei options",
+      value: "Show me Kansei options for my vehicle",
+    },
+    {
+      label: "Best fitment for my ride",
+      value: "What's the best fitment for my car?",
+    },
   ];
 
   return (
@@ -425,28 +337,28 @@ export default function FloatingChatbot({
             {messages.length === 0 && (
               <div className="text-center mt-4">
                 <div className="mb-4 flex justify-center">
-                  <ImageIcon className="h-16 w-16 text-muted-foreground" />
+                  <MessageSquare className="h-16 w-16 text-muted-foreground" />
                 </div>
                 <p className="text-lg font-semibold mb-2">
                   Kansei Fitment Help
                 </p>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Upload a pic or ask about wheels
+                  Ask about wheels for your ride
                 </p>
 
                 <div className="mt-4">
                   <p className="text-xs text-muted-foreground mb-2">
-                    Popular vehicles:
+                    Quick start:
                   </p>
                   <div className="flex flex-wrap gap-2 justify-center">
-                    {popularVehicles.map((vehicle) => (
+                    {quickPrompts.map((prompt) => (
                       <Badge
-                        key={vehicle.value}
+                        key={prompt.value}
                         variant="secondary"
                         className="cursor-pointer"
-                        onClick={() => handleQuickAction(vehicle.value)}
+                        onClick={() => handleQuickAction(prompt.value)}
                       >
-                        {vehicle.label}
+                        {prompt.label}
                       </Badge>
                     ))}
                   </div>
@@ -472,7 +384,11 @@ export default function FloatingChatbot({
                 >
                   {m.role === "assistant" && (
                     <Avatar className="h-8 w-8 shrink-0">
-                      <AvatarImage src="/kansei-logo.png" alt="Kansei" />
+                      <AvatarImage
+                        src="/kansei-logo.png"
+                        alt="Kansei"
+                        className="object-contain p-0.5"
+                      />
                       <AvatarFallback>K</AvatarFallback>
                     </Avatar>
                   )}
@@ -548,71 +464,23 @@ export default function FloatingChatbot({
             </div>
           </ScrollArea>
 
-          {/* Image Preview */}
-          {selectedFiles.length > 0 && (
-            <div className="px-4 py-2 border-t flex-shrink-0">
-              <div className="flex gap-2 overflow-x-auto">
-                {selectedFiles.map((file, index) => (
-                  <div key={index} className="relative group">
-                    <Image
-                      src={URL.createObjectURL(file)}
-                      alt={`Preview ${index + 1}`}
-                      width={64}
-                      height={64}
-                      className="h-16 w-16 object-cover rounded border"
-                    />
-                    <Button
-                      size="icon"
-                      variant="destructive"
-                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => removeFile(index)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-yellow-500 mt-1">
-                💡 For best results: side profile, clear wheel view
-              </p>
-            </div>
-          )}
-
           {/* Input Form */}
           <form
             onSubmit={handleSubmit}
             className="p-4 border-t flex gap-2 flex-shrink-0"
           >
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              accept="image/*"
-              multiple
-              className="hidden"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading}
-            >
-              <ImageIcon className="h-4 w-4" />
-            </Button>
             <Input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="What's your ride?"
               disabled={isLoading}
+              className="flex-1"
             />
             <Button
               type="submit"
               size="icon"
-              disabled={
-                isLoading || (!input.trim() && selectedFiles.length === 0)
-              }
+              disabled={isLoading || !input.trim()}
             >
               <Send className="h-4 w-4" />
             </Button>
