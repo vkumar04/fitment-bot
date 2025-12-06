@@ -110,9 +110,16 @@ or a Kansei wheel URL
 CRITICAL FITMENT MATCHING LOGIC:
 
 Step 1: Identify the user's vehicle (year, make, model, trim)
-Step 2: Check the Kansei Fitment Spreadsheet (in vector DB)
-  - If vehicle exists in official Kansei fitment table, use ONLY those recommended specs
-Step 3: Fallback to secondary fitment data (Google Drive dataset) if not in official table
+Step 2: Check kansei_wheels.json (PRIMARY SOURCE - HIGHEST PRIORITY)
+  - This is the official Kansei fitment database
+  - If vehicle exists in kansei_wheels.json, use ONLY those specs
+  - DO NOT mix data from other sources if kansei_wheels.json has the vehicle
+  - kansei_wheels.json data is ALWAYS correct and takes precedence
+Step 3: Fallback to secondary sources ONLY if vehicle is NOT in kansei_wheels.json:
+  - BMW_all_in_one.json (for BMW vehicles)
+  - porsche.json (for Porsche vehicles)
+  - Trucks.json (for off-road trucks)
+  - KANSEI_WHEELS_URLS_FINAL.json (for URLs only)
 Step 4: Match against Kansei product catalog
   - Filter by EXACT bolt pattern match FIRST
   - Then filter by width, diameter, and offset compatibility
@@ -185,26 +192,29 @@ Never identify people or describe faces.
 1️⃣ Vector DB (highest priority)
 
 
-Use uploaded JSON files in this priority order:
+CRITICAL DATA SOURCE HIERARCHY:
 
-PRIMARY SOURCE (MOST ACCURATE):
-• kansei_wheels.json — Official Kansei fitment data with exact vehicle compatibility
+PRIMARY SOURCE (ABSOLUTE PRIORITY - ALWAYS USE FIRST):
+• kansei_wheels.json — Official Kansei fitment database
+  - Contains exact vehicle compatibility with year/make/model
+  - Pre-verified fitment specs (width, diameter, offset, bolt pattern)
+  - ALWAYS prioritize this over any other source
+  - If a vehicle is in kansei_wheels.json, DO NOT use other sources
+  - This data is positioned FIRST in the vector DB results
 
-SECONDARY SOURCES:
-• KANSEI_WHEELS_URLS_FINAL.json — Product URLs and collection mappings
+SECONDARY SOURCES (use ONLY if vehicle NOT found in kansei_wheels.json):
 • BMW_all_in_one.json — BMW-specific fitment data
 • porsche.json — Porsche-specific fitment data
 • Trucks.json — Off-road truck fitment data
+• KANSEI_WHEELS_URLS_FINAL.json — Product URLs and collection mappings
 
-
-These include:
-
-All official Kansei collection URLs
-Model + finish mappings
-Exact fitment specifications per vehicle
-Bolt patterns + center bores
-Off-road truck fitment
-Vehicle compatibility
+These files include:
+• All official Kansei collection URLs
+• Model + finish mappings
+• Exact fitment specifications per vehicle
+• Bolt patterns + center bores
+• Off-road truck fitment
+• Vehicle compatibility
 
 
 
@@ -506,14 +516,40 @@ export async function POST(req: Request) {
         }
       });
 
-      // Format the context from search results
-      contextText = searchResults.data
-        .map((result) =>
+      // Prioritize kansei_wheels.json data and format the context from search results
+      const kanseiWheelsData: string[] = [];
+      const otherData: string[] = [];
+
+      searchResults.data.forEach((result) => {
+        const contentString =
           typeof result.content === "string"
             ? result.content
-            : JSON.stringify(result.content),
-        )
-        .join("\n\n---\n\n");
+            : JSON.stringify(result.content);
+
+        // Check if this result is from kansei_wheels.json (primary source)
+        const metadata = (result as any).metadata || {};
+        const fileName = metadata.file_name || metadata.filename || "";
+
+        if (fileName.toLowerCase().includes("kansei_wheels.json")) {
+          kanseiWheelsData.push(contentString);
+        } else {
+          otherData.push(contentString);
+        }
+      });
+
+      // Prioritize kansei_wheels.json data first, then append other sources
+      const allData = [...kanseiWheelsData, ...otherData];
+      contextText = allData.join("\n\n---\n\n");
+
+      // Log for debugging
+      if (kanseiWheelsData.length > 0) {
+        console.log(
+          `Found ${kanseiWheelsData.length} results from kansei_wheels.json (primary source)`,
+        );
+      }
+      if (otherData.length > 0) {
+        console.log(`Found ${otherData.length} results from secondary sources`);
+      }
     }
 
     // Build the complete system prompt with vector DB context
