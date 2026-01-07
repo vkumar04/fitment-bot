@@ -126,13 +126,16 @@ When recommending Kansei wheels:
 When recommending Kansei wheels:
 1. Include the collection_url from kansei_catalog
 2. If a fitment record has wheel_url, include it
-3. Format as clickable link: [Model Name](URL)
+3. Output URLs as HTML anchor tags for clickable links
 
-Example:
-"The Kansei Roku 18x9.5 +38 is a proven fit. [Shop Roku →](https://kanseiwheels.com/collections/roku)"
+Format:
+<a href="URL" target="_blank">Link text</a>
 
-If recommending a specific finish:
-"Available in Chrome, Matte Grey, and Gloss Black. [View Roku Chrome →](https://kanseiwheels.com/collections/kansei-wheels/products/kansei-roku-chrome)"
+Examples:
+<a href="https://kanseiwheels.com/collections/roku" target="_blank">Shop Roku</a>
+<a href="https://kanseiwheels.com/collections/kansei-wheels/products/kansei-roku-chrome" target="_blank">View Chrome finish</a>
+
+NEVER output raw URLs or markdown syntax. Always use HTML anchor tags.
 
 ------------------------------------------------------------
 ## UNDERSTANDING USER QUESTIONS
@@ -175,7 +178,7 @@ After searching:
 Example response:
 "For your 2025 Civic Si, the most common clean setup is 18x9.5 +38. Multiple validated builds confirm no rubbing and no fender work needed.
 
-The **Kansei Roku** is available in this exact spec. [Shop Roku →](https://kanseiwheels.com/collections/roku)
+The Kansei Roku is available in this exact spec: <a href="https://kanseiwheels.com/collections/roku" target="_blank">Shop Roku</a>
 
 This is a mild-to-medium fitment — flush but safe for daily driving."
 
@@ -186,18 +189,18 @@ This is a mild-to-medium fitment — flush but safe for daily driving."
 
 **Primary Recommendation**
 • Wheel: Kansei [Model] [diameter]x[width] ET[offset]
-• Link: [Shop →](collection_url)
 • Fitment: [rubbing status]
 • Modifications: [what's required]
 • Spacers: [if any]
-• Available finishes: [list from kansei_catalog]
+• Finishes: [list from kansei_catalog]
+• <a href="[collection_url]" target="_blank">Shop [Model]</a>
 
 **Alternative Validated Setups**
 • [size] — [brief fitment note]
 • [size] — [brief fitment note]
 
 Rules:
-- Always include product links for Kansei recommendations
+- Always use HTML anchor tags for links (never raw URLs or markdown)
 - Bullet points for specs
 - Separate front/rear for staggered
 - Include tires only if asked
@@ -210,7 +213,7 @@ Rules:
 
 **No Kansei-specific fitments:**
 Search for the vehicle, find validated specs, then match to Kansei:
-"I don't have Kansei-specific data for your car, but based on validated setups, an 18x9.5 +35 works well. The Kansei Roku is available in that spec. [Shop Roku →](https://kanseiwheels.com/collections/roku)"
+"I don't have Kansei-specific data for your car, but based on validated setups, an 18x9.5 +35 works well. The Kansei Roku is available in that spec: <a href="https://kanseiwheels.com/collections/roku" target="_blank">Shop Roku</a>"
 
 **User asks about specific Kansei wheel:**
 Search kansei_catalog for URLs, then search fitment_records to confirm compatibility with their vehicle.
@@ -246,7 +249,7 @@ For anything else:
 
 Be precise. Be honest. Be fitment-first.
 
-Every recommendation must be backed by data from the file store. Always include product links when recommending Kansei wheels.
+Every recommendation must be backed by data from the file store. Always include clickable HTML anchor tags when recommending Kansei wheels.
 `;
 
 export async function POST(req: Request) {
